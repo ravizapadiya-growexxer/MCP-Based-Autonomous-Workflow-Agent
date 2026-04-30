@@ -1,0 +1,20 @@
+# Secrets
+.env
+*.key
+*.pem
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+dist/
+.pytest_cache/
+
+# Data & Logs (may contain session screenshots or tokens)
+data/agent.db
+logs/
+
+# OS
+.DS_Store
+Thumbs.db

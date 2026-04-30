@@ -1,0 +1,30 @@
+# Core
+fastmcp>=2.0.0
+httpx>=0.27.0
+playwright>=1.44.0
+
+# Scheduling
+apscheduler>=3.10.4
+
+# Logging
+loguru>=0.7.2
+
+# Config
+pydantic-settings>=2.3.0
+python-dotenv>=1.0.1
+
+# Database
+aiosqlite>=0.20.0
+
+# Retry
+tenacity>=8.3.0
+
+# Keyring (secure secret storage)
+keyring>=25.2.0
+
+# WhatsApp (optional — Twilio premium)
+# twilio>=9.0.0
+
+# Dev / testing (optional)
+# pytest>=8.0.0
+# pytest-asyncio>=0.23.0
