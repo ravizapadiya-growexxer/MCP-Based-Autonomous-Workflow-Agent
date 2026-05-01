@@ -1,35 +1,32 @@
-.PHONY: install setup run morning evening reset-state list-transitions mcp-server
+.PHONY: install setup run morning evening test-jira view-state docker-build docker-up docker-down
 
 install:
 	pip install -r requirements.txt
 	playwright install chromium
 
 setup:
-	mkdir -p logs/morning logs/evening logs/error logs/screenshots data
-	cp .env.example .env
-	@echo "\n✅ Done. Edit .env then run: make run"
+	python scripts/setup.py
 
 run:
-	python src/main.py
+	python -m scheduler.main_scheduler
 
 morning:
-	python -c "import asyncio; from src.agents.morning import run_morning; asyncio.run(run_morning())"
+	python scripts/run_morning.py
 
 evening:
-	python -c "import asyncio; from src.agents.evening import run_evening; asyncio.run(run_evening())"
+	python scripts/run_evening.py
 
-reset-state:
-	python scripts/reset_state.py
+test-jira:
+	python scripts/test_jira.py
 
-list-transitions:
-	@read -p "Enter any Jira issue key (e.g. DEV-1): " key; \
-	python scripts/list_transitions.py $$key
+view-state:
+	python scripts/view_state.py
 
-mcp-server:
-	python mcp_server/server.py
+docker-build:
+	docker compose build
 
-dry-morning:
-	DRY_RUN=true python -c "import asyncio; from src.agents.morning import run_morning; asyncio.run(run_morning())"
+docker-up:
+	docker compose up -d
 
-dry-evening:
-	DRY_RUN=true python -c "import asyncio; from src.agents.evening import run_evening; asyncio.run(run_evening())"
+docker-down:
+	docker compose down

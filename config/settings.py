@@ -1,100 +1,138 @@
+"""Application settings loaded from .env.
+
+Credential fields default to empty strings so the codebase imports cleanly
+before .env is populated. Call `settings.validate()` to surface missing
+values before performing any I/O against external services.
+"""
+
 from __future__ import annotations
+
+from dataclasses import dataclass
+from pathlib import Path
+from typing import List
+
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import field_validator
-from typing import Optional
-import keyring
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+
+@dataclass(frozen=True)
+class ValidationIssue:
+    field: str
+    message: str
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=str(PROJECT_ROOT / ".env"),
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
     )
 
-    # ── Jira ──────────────────────────────────────────────────────
-    jira_url: str = ""                          # https://company.atlassian.net
-    jira_username: str = ""                     # your.email@company.com
-    jira_api_token: str = ""                    # Jira API token
-    jira_project_key: str = ""                  # e.g. DEV
-    jira_assignee_account_id: str = ""          # Your Jira accountId
-    jira_in_progress_transition_id: str = "21"  # Discover via /transitions endpoint
-    jira_done_transition_id: str = "31"         # Discover via /transitions endpoint
-    story_estimate_hours: int = 8               # originalEstimate in hours
+    # Jira
+    jira_base_url: str = ""
+    jira_email: str = ""
+    jira_api_token: str = ""
+    jira_parent_key: str = ""
+    jira_project_key: str = ""
+    my_jira_label: str = ""
+    my_username_prefix: str = ""
 
-    # Assignee name used to build the single subtask title (firstname_lastname)
-    jira_assignee_name: str = "name_surname"   # e.g. ravi_zapadiya
-
-    # ── Timesheet Portal ──────────────────────────────────────────
-    timesheet_url: str = ""                     # https://timesheet.company.com
+    # Timesheet portal
+    timesheet_url: str = ""
     timesheet_username: str = ""
-    timesheet_password: str = ""                # Or stored in keyring
-    timesheet_sync_button_text: str = "Sync"   # Exact button label
+    timesheet_password: str = ""
 
-    # CSS/XPath selectors (override if portal changes)
-    ts_username_selector: str = "input[name='username'], input[type='email']"
-    ts_password_selector: str = "input[name='password'], input[type='password']"
-    ts_login_button_selector: str = "button[type='submit']"
-    ts_success_selector: str = ".success, .alert-success, [class*='success']"
+    # Twilio
+    twilio_account_sid: str = ""
+    twilio_auth_token: str = ""
+    twilio_from_number: str = ""
+    twilio_to_number: str = ""
+    twilio_channel: str = "whatsapp"
 
-    # ── User ──────────────────────────────────────────────────────
-    user_email: str = "creatorx1235@gmail.com"
+    # Anthropic
+    anthropic_api_key: str = ""
+    anthropic_model: str = "claude-sonnet-4-5-20250929"
 
-    # ── Scheduler ─────────────────────────────────────────────────
-    tz: str = "Asia/Kolkata"
-    morning_hour: int = 11
-    morning_minute: int = 0
-    evening_hour: int = 19
-    evening_minute: int = 0
-
-    # ── Browser ───────────────────────────────────────────────────
-    browser_headless: bool = True
-
-    # ── WhatsApp — CallMeBot (Free for personal use) ──────────────
-    # Setup: Add +34 644 59 71 28 in WhatsApp, send "I allow callmebot..."
-    # Get API key from https://www.callmebot.com/blog/free-api-whatsapp-messages/
-    whatsapp_phone: Optional[str] = None        # +91XXXXXXXXXX (with country code)
-    whatsapp_apikey: Optional[str] = None       # Provided by CallMeBot after activation
-
-    # ── WhatsApp — Twilio (Premium, optional) ─────────────────────
-    twilio_account_sid: Optional[str] = None
-    twilio_auth_token: Optional[str] = None
-    twilio_whatsapp_from: Optional[str] = None  # whatsapp:+14155238886
-    twilio_whatsapp_to: Optional[str] = None    # whatsapp:+91XXXXXXXXXX
-
-    # ── Behavior ──────────────────────────────────────────────────
-    dry_run: bool = False                       # True = log only, no actual changes
-    require_human_approval: bool = False
-
-    # ── Logging ───────────────────────────────────────────────────
+    # Application
+    state_db_path: str = str(PROJECT_ROOT / "data" / "automation_state.db")
+    intern_start_date: str = ""
+    timezone: str = "Asia/Kolkata"
+    human_approval_mode: bool = False
+    dry_run: bool = False
     log_level: str = "INFO"
-    log_dir: str = "logs"
+    log_dir: str = str(PROJECT_ROOT / "logs")
 
-    # ── Database ──────────────────────────────────────────────────
-    db_path: str = "data/agent.db"
+    # Observability
+    dashboard_port: int = 5050
+    dashboard_token: str = ""
 
-    # ── Retry ─────────────────────────────────────────────────────
-    retry_max_attempts: int = 3
-    retry_wait_seconds: int = 5
+    # Required-for-runtime field groups. Each group is validated independently
+    # so we can fail fast for the path the caller actually exercises.
+    _JIRA_FIELDS = (
+        "jira_base_url", "jira_email", "jira_api_token",
+        "jira_parent_key", "jira_project_key", "my_jira_label",
+        "my_username_prefix",
+    )
+    _TIMESHEET_FIELDS = ("timesheet_url", "timesheet_username", "timesheet_password")
+    _TWILIO_FIELDS = (
+        "twilio_account_sid", "twilio_auth_token",
+        "twilio_from_number", "twilio_to_number",
+    )
+    _ANTHROPIC_FIELDS = ("anthropic_api_key",)
+    _APP_FIELDS = ("intern_start_date", "dashboard_token")
 
-    # ── MCP Server ────────────────────────────────────────────────
-    mcp_server_host: str = "127.0.0.1"
-    mcp_server_port: int = 8000
+    def _missing(self, fields: tuple[str, ...]) -> List[ValidationIssue]:
+        issues: List[ValidationIssue] = []
+        for f in fields:
+            value = getattr(self, f, "")
+            if not value or value.startswith("<") or value.lower().startswith("sk-ant-api03-..."):
+                issues.append(ValidationIssue(f, "missing or placeholder"))
+        return issues
 
-    def subtask_title(self, story_summary: str) -> str:
-        """Build the single subtask name: name_surname - story title."""
-        return f"{self.jira_assignee_name} - {story_summary}"
+    def validate_jira(self) -> List[ValidationIssue]:
+        return self._missing(self._JIRA_FIELDS)
 
-    def get_jira_api_token(self) -> str:
-        """Try keyring first, then env."""
-        token = keyring.get_password("mcp-agent", "JIRA_API_TOKEN")
-        return token or self.jira_api_token
+    def validate_timesheet(self) -> List[ValidationIssue]:
+        return self._missing(self._TIMESHEET_FIELDS)
 
-    def get_timesheet_password(self) -> str:
-        """Try keyring first, then env."""
-        pwd = keyring.get_password("mcp-agent", "TIMESHEET_PASSWORD")
-        return pwd or self.timesheet_password
+    def validate_twilio(self) -> List[ValidationIssue]:
+        return self._missing(self._TWILIO_FIELDS)
+
+    def validate_anthropic(self) -> List[ValidationIssue]:
+        return self._missing(self._ANTHROPIC_FIELDS)
+
+    def validate_app(self) -> List[ValidationIssue]:
+        return self._missing(self._APP_FIELDS)
+
+    def validate_all(self) -> List[ValidationIssue]:
+        return (
+            self.validate_jira()
+            + self.validate_timesheet()
+            + self.validate_twilio()
+            + self.validate_anthropic()
+            + self.validate_app()
+        )
+
+    def require(self, *groups: str) -> None:
+        """Raise RuntimeError if any required group has missing values."""
+        validators = {
+            "jira": self.validate_jira,
+            "timesheet": self.validate_timesheet,
+            "twilio": self.validate_twilio,
+            "anthropic": self.validate_anthropic,
+            "app": self.validate_app,
+        }
+        issues: List[ValidationIssue] = []
+        for g in groups:
+            if g not in validators:
+                raise ValueError(f"Unknown settings group: {g}")
+            issues.extend(validators[g]())
+        if issues:
+            details = ", ".join(f"{i.field} ({i.message})" for i in issues)
+            raise RuntimeError(f"Configuration incomplete for {list(groups)}: {details}")
 
 
 settings = Settings()
